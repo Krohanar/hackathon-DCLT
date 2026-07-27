@@ -1,13 +1,13 @@
 variable "aws_region" {
-  description = "Região AWS principal."
+  description = "RegiÃ£o AWS principal."
   type        = string
   default     = "us-east-1"
 }
 
 variable "environment" {
-  description = "Ambiente da aplicação."
+  description = "Ambiente da aplicaÃ§Ã£o."
   type        = string
-  default     = "dev"
+  default     = "Production"
 }
 
 variable "project_name" {
