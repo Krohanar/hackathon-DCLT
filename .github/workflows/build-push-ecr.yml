@@ -1,0 +1,77 @@
+﻿name: Build and Push Images to ECR
+
+on:
+  push:
+    branches:
+      - main
+      - fase-5-implementacao
+    paths:
+      - "ngo-service/**"
+      - "donation-service/**"
+      - "volunteer-service/**"
+      - ".github/workflows/build-push-ecr.yml"
+  workflow_dispatch:
+
+env:
+  AWS_REGION: us-east-1
+
+jobs:
+  build-and-push:
+    name: Build and push Docker images
+    runs-on: ubuntu-latest
+
+    env:
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate AWS identity
+        run: |
+          aws sts get-caller-identity
+
+      - name: Define variables
+        id: vars
+        run: |
+          ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+          REGISTRY="$ACCOUNT_ID.dkr.ecr.${AWS_REGION}.amazonaws.com"
+          GIT_SHA="${GITHUB_SHA::7}"
+
+          echo "account_id=$ACCOUNT_ID" >> "$GITHUB_OUTPUT"
+          echo "registry=$REGISTRY" >> "$GITHUB_OUTPUT"
+          echo "git_sha=$GIT_SHA" >> "$GITHUB_OUTPUT"
+
+          echo "ACCOUNT_ID=$ACCOUNT_ID"
+          echo "REGISTRY=$REGISTRY"
+          echo "GIT_SHA=$GIT_SHA"
+
+      - name: Login to ECR
+        run: |
+          aws ecr get-login-password --region "$AWS_REGION" \
+            | docker login --username AWS --password-stdin "${{ steps.vars.outputs.registry }}"
+
+      - name: Build and push ngo-service
+        run: |
+          IMAGE="${{ steps.vars.outputs.registry }}/solidarytech/ngo-service"
+          docker build -t "$IMAGE:${{ steps.vars.outputs.git_sha }}" ./ngo-service
+          docker tag "$IMAGE:${{ steps.vars.outputs.git_sha }}" "$IMAGE:latest"
+          docker push "$IMAGE:${{ steps.vars.outputs.git_sha }}"
+          docker push "$IMAGE:latest"
+
+      - name: Build and push donation-service
+        run: |
+          IMAGE="${{ steps.vars.outputs.registry }}/solidarytech/donation-service"
+          docker build -t "$IMAGE:${{ steps.vars.outputs.git_sha }}" ./donation-service
+          docker tag "$IMAGE:${{ steps.vars.outputs.git_sha }}" "$IMAGE:latest"
+          docker push "$IMAGE:${{ steps.vars.outputs.git_sha }}"
+          docker push "$IMAGE:latest"
+
+      - name: Build and push volunteer-service
+        run: |
+          IMAGE="${{ steps.vars.outputs.registry }}/solidarytech/volunteer-service"
+          docker build -t "$IMAGE:${{ steps.vars.outputs.git_sha }}" ./volunteer-service
+          docker tag "$IMAGE:${{ steps.vars.outputs.git_sha }}" "$IMAGE:latest"
+          docker push "$IMAGE:${{ steps.vars.outputs.git_sha }}"
+          docker push "$IMAGE:latest"

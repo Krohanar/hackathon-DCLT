@@ -1,0 +1,28 @@
+﻿# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Env
+.env
+*.env
+
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+crash.log
+crash.*.log
+tfplan
+*.tfplan
+
+# OS / IDE
+.DS_Store
+.vscode/
+.idea/
+
+# Docker
+*.log
+docs/finops/data/
+docs/evidencias/

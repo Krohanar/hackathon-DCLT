@@ -1,0 +1,138 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: solidarytech-velero
+  namespace: argocd
+  labels:
+    app.kubernetes.io/name: solidarytech-velero
+    app.kubernetes.io/part-of: solidarytech
+    project: SolidaryTech
+    environment: Production
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+
+  source:
+    repoURL: https://vmware-tanzu.github.io/helm-charts
+    chart: velero
+    targetRevision: 12.1.0
+
+    helm:
+      releaseName: velero
+      values: |
+        image:
+          repository: docker.io/velero/velero
+          tag: v1.18.1
+          pullPolicy: IfNotPresent
+
+        initContainers:
+          - name: velero-plugin-for-aws
+            image: docker.io/velero/velero-plugin-for-aws:v1.14.0
+            imagePullPolicy: IfNotPresent
+            volumeMounts:
+              - name: plugins
+                mountPath: /target
+
+        serviceAccount:
+          server:
+            create: true
+            name: velero
+            annotations:
+              eks.amazonaws.com/role-arn: arn:aws:iam::106978078844:role/solidarytech-velero-dr-role
+            automountServiceAccountToken: true
+
+        credentials:
+          useSecret: false
+
+        backupsEnabled: true
+        snapshotsEnabled: false
+        deployNodeAgent: false
+
+        configuration:
+          backupStorageLocation:
+            - name: default
+              provider: aws
+              bucket: solidarytech-velero-dr-106978078844-us-west-2
+              prefix: solidarytech-production
+              default: true
+              accessMode: ReadWrite
+              validationFrequency: 1m
+              config:
+                region: us-west-2
+
+          volumeSnapshotLocation: []
+
+          defaultBackupStorageLocation: default
+          defaultBackupTTL: 168h0m0s
+          defaultVolumesToFsBackup: false
+          logLevel: info
+          logFormat: text
+
+        resources:
+          requests:
+            cpu: 50m
+            memory: 128Mi
+          limits:
+            cpu: 200m
+            memory: 256Mi
+
+        upgradeJobResources:
+          requests:
+            cpu: 20m
+            memory: 64Mi
+          limits:
+            cpu: 100m
+            memory: 128Mi
+
+        podSecurityContext:
+          fsGroup: 65534
+
+        containerSecurityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - ALL
+
+        metrics:
+          enabled: true
+          serviceMonitor:
+            enabled: false
+
+        schedules:
+          solidarytech-hourly:
+            disabled: false
+            schedule: "0 * * * *"
+            useOwnerReferencesInBackup: false
+            paused: false
+            skipImmediately: false
+            template:
+              ttl: "168h0m0s"
+              storageLocation: default
+              includedNamespaces:
+                - solidarytech
+                - monitoring
+                - argocd
+              snapshotVolumes: false
+              defaultVolumesToFsBackup: false
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: velero
+
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+      - SkipDryRunOnMissingResource=true
+
+    retry:
+      limit: 3
+      backoff:
+        duration: 10s
+        factor: 2
+        maxDuration: 1m

@@ -1,0 +1,37 @@
+﻿apiVersion: v1
+kind: Service
+metadata:
+  name: donation-service-metrics
+  namespace: solidarytech
+  labels:
+    app: donation-service-metrics
+    app.kubernetes.io/name: donation-service
+    release: solidarytech-monitoring
+spec:
+  selector:
+    app: donation-service
+  ports:
+    - name: http
+      port: 8082
+      targetPort: 8082
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: donation-service
+  namespace: solidarytech
+  labels:
+    release: solidarytech-monitoring
+    app.kubernetes.io/name: donation-service
+spec:
+  namespaceSelector:
+    matchNames:
+      - solidarytech
+  selector:
+    matchLabels:
+      app: donation-service-metrics
+  endpoints:
+    - port: http
+      path: /metrics
+      interval: 30s
+      scrapeTimeout: 10s

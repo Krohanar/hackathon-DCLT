@@ -1,0 +1,13 @@
+﻿apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: solidarytech-config
+  namespace: solidarytech
+data:
+  AWS_REGION: "us-east-1"
+  SQS_QUEUE_URL: "https://sqs.us-east-1.amazonaws.com/106978078844/solidary-donations"
+  VOLUNTEERS_TABLE_NAME: "SolidaryTechVolunteers"
+  RDS_HOST: "solidarytech-production-postgres.csjksqqye2ig.us-east-1.rds.amazonaws.com"
+  RDS_PORT: "5432"
+  NGO_DATABASE_NAME: "ngo_db"
+  DONATION_DATABASE_NAME: "donation_db"

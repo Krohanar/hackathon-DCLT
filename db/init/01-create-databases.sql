@@ -1,0 +1,2 @@
+CREATE DATABASE ngo_db;
+CREATE DATABASE donation_db;

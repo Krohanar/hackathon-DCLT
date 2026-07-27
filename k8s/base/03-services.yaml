@@ -1,0 +1,243 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ngo-service
+  namespace: solidarytech
+  labels:
+    app: ngo-service
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: ngo-service
+  template:
+    metadata:
+      labels:
+        app: ngo-service
+    spec:
+      containers:
+        - name: ngo-service
+          image: 106978078844.dkr.ecr.us-east-1.amazonaws.com/solidarytech/ngo-service:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8081
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: solidarytech-secrets
+                  key: NGO_DATABASE_URL
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8081
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 3
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8081
+            initialDelaySeconds: 30
+            periodSeconds: 20
+            timeoutSeconds: 3
+          resources:
+            requests:
+              cpu: "50m"
+              memory: "96Mi"
+            limits:
+              cpu: "200m"
+              memory: "192Mi"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ngo-service
+  namespace: solidarytech
+spec:
+  type: ClusterIP
+  selector:
+    app: ngo-service
+  ports:
+    - port: 8081
+      targetPort: 8081
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: donation-service
+  namespace: solidarytech
+  labels:
+    app: donation-service
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: donation-service
+  template:
+    metadata:
+      labels:
+        app: donation-service
+    spec:
+      containers:
+        - name: donation-service
+          image: 106978078844.dkr.ecr.us-east-1.amazonaws.com/solidarytech/donation-service:73219ea
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8082
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: solidarytech-secrets
+                  key: DONATION_DATABASE_URL
+            - name: AWS_REGION
+              valueFrom:
+                configMapKeyRef:
+                  name: solidarytech-config
+                  key: AWS_REGION
+            - name: AWS_ACCESS_KEY_ID
+              valueFrom:
+                secretKeyRef:
+                  name: aws-runtime-secrets
+                  key: AWS_ACCESS_KEY_ID
+            - name: AWS_SECRET_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: aws-runtime-secrets
+                  key: AWS_SECRET_ACCESS_KEY
+            - name: AWS_SQS_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: solidarytech-config
+                  key: SQS_QUEUE_URL
+            - name: SQS_QUEUE_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: solidarytech-config
+                  key: SQS_QUEUE_URL
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: "http://solidarytech-otel-collector.monitoring.svc.cluster.local:4318"
+            - name: OTEL_EXPORTER_OTLP_PROTOCOL
+              value: "http/protobuf"
+            - name: OTEL_SERVICE_NAME
+              value: "donation-service"
+            - name: OTEL_DEPLOYMENT_ENVIRONMENT
+              value: "production"
+            - name: SERVICE_VERSION
+              value: "73219ea"
+            - name: OTEL_EXPORTER_OTLP_TIMEOUT
+              value: "10000"
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8082
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 3
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8082
+            initialDelaySeconds: 30
+            periodSeconds: 20
+            timeoutSeconds: 3
+          resources:
+            requests:
+              cpu: "50m"
+              memory: "64Mi"
+            limits:
+              cpu: "300m"
+              memory: "192Mi"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: donation-service
+  namespace: solidarytech
+spec:
+  type: ClusterIP
+  selector:
+    app: donation-service
+  ports:
+    - port: 8082
+      targetPort: 8082
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: volunteer-service
+  namespace: solidarytech
+  labels:
+    app: volunteer-service
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: volunteer-service
+  template:
+    metadata:
+      labels:
+        app: volunteer-service
+    spec:
+      containers:
+        - name: volunteer-service
+          image: 106978078844.dkr.ecr.us-east-1.amazonaws.com/solidarytech/volunteer-service:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8083
+          env:
+            - name: AWS_REGION
+              valueFrom:
+                configMapKeyRef:
+                  name: solidarytech-config
+                  key: AWS_REGION
+            - name: AWS_ACCESS_KEY_ID
+              valueFrom:
+                secretKeyRef:
+                  name: aws-runtime-secrets
+                  key: AWS_ACCESS_KEY_ID
+            - name: AWS_SECRET_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: aws-runtime-secrets
+                  key: AWS_SECRET_ACCESS_KEY
+            - name: AWS_DYNAMODB_TABLE
+              valueFrom:
+                configMapKeyRef:
+                  name: solidarytech-config
+                  key: VOLUNTEERS_TABLE_NAME
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8083
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 3
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8083
+            initialDelaySeconds: 30
+            periodSeconds: 20
+            timeoutSeconds: 3
+          resources:
+            requests:
+              cpu: "50m"
+              memory: "128Mi"
+            limits:
+              cpu: "200m"
+              memory: "256Mi"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: volunteer-service
+  namespace: solidarytech
+spec:
+  type: ClusterIP
+  selector:
+    app: volunteer-service
+  ports:
+    - port: 8083
+      targetPort: 8083
