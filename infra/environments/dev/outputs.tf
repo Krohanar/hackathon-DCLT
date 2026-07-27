@@ -73,3 +73,23 @@ output "rds_security_group_id" {
   description = "Security Group do RDS."
   value       = module.rds_postgres.security_group_id
 }
+
+output "eks_cluster_name" {
+  description = "Nome do cluster EKS."
+  value       = module.eks.cluster_name
+}
+
+output "eks_cluster_version" {
+  description = "Versão Kubernetes do cluster EKS."
+  value       = module.eks.cluster_version
+}
+
+output "eks_cluster_endpoint" {
+  description = "Endpoint do cluster EKS."
+  value       = module.eks.cluster_endpoint
+}
+
+output "eks_node_group_name" {
+  description = "Nome do node group EKS."
+  value       = module.eks.node_group_name
+}

@@ -7,6 +7,9 @@ locals {
     Owner       = "FIAP"
   }
 
+  environment_slug = lower(var.environment)
+  eks_cluster_name = "solidarytech-${lower(var.environment)}"
+
   ecr_repositories = [
     "solidarytech/ngo-service",
     "solidarytech/donation-service",
@@ -58,6 +61,20 @@ module "rds_postgres" {
 
   db_name         = "ngo_db"
   master_username = "solidaryadmin"
+
+  tags = local.common_tags
+}
+
+module "eks" {
+  source = "../../modules/eks"
+
+  cluster_name        = local.eks_cluster_name
+  cluster_version     = var.eks_cluster_version
+  public_subnet_ids   = module.network.public_subnet_ids
+  node_instance_types = var.eks_node_instance_types
+  node_desired_size   = var.eks_node_desired_size
+  node_min_size       = var.eks_node_min_size
+  node_max_size       = var.eks_node_max_size
 
   tags = local.common_tags
 }
