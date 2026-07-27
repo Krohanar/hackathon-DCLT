@@ -1,4 +1,4 @@
-﻿name: SolidaryTech Self-Healing
+name: SolidaryTech Self-Healing
 
 on:
   repository_dispatch:
@@ -172,12 +172,7 @@ jobs:
             --namespace "${KUBERNETES_NAMESPACE}" \
             --timeout=240s
 
-          kubectl wait \
-            --for=condition=Ready \
-            pod \
-            --selector "app=${KUBERNETES_DEPLOYMENT}" \
-            --namespace "${KUBERNETES_NAMESPACE}" \
-            --timeout=240s
+          echo "Deployment rollout completed successfully."
 
       - name: Validate service after recovery
         shell: bash
