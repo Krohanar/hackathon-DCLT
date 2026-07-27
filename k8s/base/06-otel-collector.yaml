@@ -1,0 +1,245 @@
+﻿apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: solidarytech-otel-collector-config
+  namespace: monitoring
+  labels:
+    app: solidarytech-otel-collector
+    app.kubernetes.io/name: opentelemetry-collector
+    app.kubernetes.io/part-of: solidarytech
+data:
+  config.yaml: |
+    extensions:
+      health_check:
+        endpoint: 0.0.0.0:13133
+
+    receivers:
+      otlp:
+        protocols:
+          grpc:
+            endpoint: 0.0.0.0:4317
+          http:
+            endpoint: 0.0.0.0:4318
+
+    processors:
+      memory_limiter:
+        check_interval: 1s
+        limit_mib: 200
+        spike_limit_mib: 50
+
+      batch:
+        timeout: 5s
+        send_batch_size: 512
+
+      resource:
+        attributes:
+          - key: deployment.environment.name
+            value: production
+            action: upsert
+
+          - key: cloud.provider
+            value: aws
+            action: upsert
+
+          - key: cloud.platform
+            value: aws_eks
+            action: upsert
+
+          - key: k8s.cluster.name
+            value: solidarytech-production
+            action: upsert
+
+          - key: solidarytech.project
+            value: SolidaryTech
+            action: upsert
+
+    exporters:
+      otlphttp/newrelic:
+        endpoint: https://otlp.nr-data.net
+        headers:
+          api-key: ${env:NEW_RELIC_LICENSE_KEY}
+        compression: gzip
+        timeout: 30s
+        retry_on_failure:
+          enabled: true
+          initial_interval: 5s
+          max_interval: 30s
+          max_elapsed_time: 300s
+
+    service:
+      extensions:
+        - health_check
+
+      telemetry:
+        logs:
+          level: info
+
+      pipelines:
+        traces:
+          receivers:
+            - otlp
+          processors:
+            - memory_limiter
+            - resource
+            - batch
+          exporters:
+            - otlphttp/newrelic
+
+        metrics:
+          receivers:
+            - otlp
+          processors:
+            - memory_limiter
+            - resource
+            - batch
+          exporters:
+            - otlphttp/newrelic
+
+        logs:
+          receivers:
+            - otlp
+          processors:
+            - memory_limiter
+            - resource
+            - batch
+          exporters:
+            - otlphttp/newrelic
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: solidarytech-otel-collector
+  namespace: monitoring
+  labels:
+    app: solidarytech-otel-collector
+    app.kubernetes.io/name: opentelemetry-collector
+    app.kubernetes.io/part-of: solidarytech
+spec:
+  type: ClusterIP
+  selector:
+    app: solidarytech-otel-collector
+  ports:
+    - name: otlp-grpc
+      protocol: TCP
+      port: 4317
+      targetPort: otlp-grpc
+
+    - name: otlp-http
+      protocol: TCP
+      port: 4318
+      targetPort: otlp-http
+
+    - name: health
+      protocol: TCP
+      port: 13133
+      targetPort: health
+
+    - name: internal-metrics
+      protocol: TCP
+      port: 8888
+      targetPort: internal-metrics
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: solidarytech-otel-collector
+  namespace: monitoring
+  labels:
+    app: solidarytech-otel-collector
+    app.kubernetes.io/name: opentelemetry-collector
+    app.kubernetes.io/part-of: solidarytech
+spec:
+  replicas: 1
+
+  selector:
+    matchLabels:
+      app: solidarytech-otel-collector
+
+  template:
+    metadata:
+      labels:
+        app: solidarytech-otel-collector
+        app.kubernetes.io/name: opentelemetry-collector
+        app.kubernetes.io/part-of: solidarytech
+
+    spec:
+      containers:
+        - name: otel-collector
+          image: ghcr.io/open-telemetry/opentelemetry-collector-releases/opentelemetry-collector-contrib:0.156.0
+          imagePullPolicy: IfNotPresent
+
+          args:
+            - --config=/etc/otelcol-contrib/config.yaml
+
+          env:
+            - name: NEW_RELIC_LICENSE_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: new-relic-otel-secret
+                  key: NEW_RELIC_LICENSE_KEY
+
+            - name: GOMEMLIMIT
+              value: 200MiB
+
+          ports:
+            - name: otlp-grpc
+              containerPort: 4317
+              protocol: TCP
+
+            - name: otlp-http
+              containerPort: 4318
+              protocol: TCP
+
+            - name: health
+              containerPort: 13133
+              protocol: TCP
+
+            - name: internal-metrics
+              containerPort: 8888
+              protocol: TCP
+
+          readinessProbe:
+            httpGet:
+              path: /
+              port: health
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+
+          livenessProbe:
+            httpGet:
+              path: /
+              port: health
+            initialDelaySeconds: 10
+            periodSeconds: 15
+            timeoutSeconds: 3
+            failureThreshold: 3
+
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 300m
+              memory: 256Mi
+
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            readOnlyRootFilesystem: true
+
+          volumeMounts:
+            - name: collector-config
+              mountPath: /etc/otelcol-contrib/config.yaml
+              subPath: config.yaml
+              readOnly: true
+
+      volumes:
+        - name: collector-config
+          configMap:
+            name: solidarytech-otel-collector-config
