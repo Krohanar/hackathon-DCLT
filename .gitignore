@@ -25,3 +25,4 @@ tfplan
 # Docker
 *.log
 docs/finops/data/
+docs/evidencias/
