@@ -1,0 +1,269 @@
+﻿name: SolidaryTech Self-Healing
+
+on:
+  repository_dispatch:
+    types:
+      - solidarytech-self-healing
+
+  workflow_dispatch:
+    inputs:
+      issue_id:
+        description: "ID da Issue do New Relic"
+        required: false
+        default: "manual-test"
+        type: string
+
+      issue_title:
+        description: "Título do incidente"
+        required: false
+        default: "Teste manual de Self-Healing"
+        type: string
+
+      issue_state:
+        description: "Estado do incidente"
+        required: false
+        default: "active"
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: solidarytech-donation-service-self-healing
+  cancel-in-progress: false
+
+env:
+  AWS_REGION: us-east-1
+  EKS_CLUSTER_NAME: solidarytech-production
+  KUBERNETES_NAMESPACE: solidarytech
+  KUBERNETES_DEPLOYMENT: donation-service
+
+jobs:
+  restart-donation-service:
+    name: Restart donation-service
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    env:
+      INCIDENT_ID: ${{ github.event.client_payload.issue_id || inputs.issue_id || 'not-informed' }}
+      INCIDENT_TITLE: ${{ github.event.client_payload.issue_title || inputs.issue_title || 'SolidaryTech incident' }}
+      INCIDENT_STATE: ${{ github.event.client_payload.issue_state || inputs.issue_state || 'active' }}
+      NEW_RELIC_URL: ${{ github.event.client_payload.issue_url || 'not-informed' }}
+
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v6.1.0
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+          mask-aws-account-id: false
+
+      - name: Install kubectl
+        uses: azure/setup-kubectl@v4
+
+      - name: Identify AWS caller
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          echo "AWS identity used by the Self-Healing automation:"
+          aws sts get-caller-identity
+
+      - name: Configure access to EKS
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          aws eks update-kubeconfig \
+            --name "${EKS_CLUSTER_NAME}" \
+            --region "${AWS_REGION}"
+
+          kubectl config current-context
+
+      - name: Validate Kubernetes access
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          kubectl get nodes
+
+          kubectl auth can-i get deployments \
+            --namespace "${KUBERNETES_NAMESPACE}"
+
+          kubectl auth can-i patch deployments \
+            --namespace "${KUBERNETES_NAMESPACE}"
+
+          CAN_PATCH="$(
+            kubectl auth can-i patch deployments \
+              --namespace "${KUBERNETES_NAMESPACE}"
+          )"
+
+          if [ "${CAN_PATCH}" != "yes" ]; then
+            echo "The GitHub Actions AWS identity cannot patch deployments."
+            exit 1
+          fi
+
+      - name: Capture state before Self-Healing
+        id: before
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          echo "Incident ID: ${INCIDENT_ID}"
+          echo "Incident title: ${INCIDENT_TITLE}"
+          echo "Incident state: ${INCIDENT_STATE}"
+          echo "New Relic URL: ${NEW_RELIC_URL}"
+
+          echo ""
+          echo "Pods before Self-Healing:"
+
+          kubectl get pods \
+            --namespace "${KUBERNETES_NAMESPACE}" \
+            --selector "app=${KUBERNETES_DEPLOYMENT}" \
+            --output wide
+
+          BEFORE_PODS="$(
+            kubectl get pods \
+              --namespace "${KUBERNETES_NAMESPACE}" \
+              --selector "app=${KUBERNETES_DEPLOYMENT}" \
+              --output jsonpath='{range .items[*]}{.metadata.name}{" | UID="}{.metadata.uid}{" | Created="}{.metadata.creationTimestamp}{"\n"}{end}'
+          )"
+
+          {
+            echo "## SolidaryTech Self-Healing"
+            echo ""
+            echo "**Incident ID:** ${INCIDENT_ID}"
+            echo ""
+            echo "**Incident:** ${INCIDENT_TITLE}"
+            echo ""
+            echo "**State:** ${INCIDENT_STATE}"
+            echo ""
+            echo "**Cluster:** ${EKS_CLUSTER_NAME}"
+            echo ""
+            echo "**Deployment:** ${KUBERNETES_NAMESPACE}/${KUBERNETES_DEPLOYMENT}"
+            echo ""
+            echo "### Pods before"
+            echo '```text'
+            echo "${BEFORE_PODS}"
+            echo '```'
+          } >> "${GITHUB_STEP_SUMMARY}"
+
+      - name: Execute corrective action
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          echo "Starting automated corrective action..."
+
+          kubectl rollout restart \
+            deployment/"${KUBERNETES_DEPLOYMENT}" \
+            --namespace "${KUBERNETES_NAMESPACE}"
+
+          echo "Corrective action requested successfully."
+
+      - name: Wait for recovery
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          kubectl rollout status \
+            deployment/"${KUBERNETES_DEPLOYMENT}" \
+            --namespace "${KUBERNETES_NAMESPACE}" \
+            --timeout=240s
+
+          kubectl wait \
+            --for=condition=Ready \
+            pod \
+            --selector "app=${KUBERNETES_DEPLOYMENT}" \
+            --namespace "${KUBERNETES_NAMESPACE}" \
+            --timeout=240s
+
+      - name: Validate service after recovery
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          DESIRED="$(
+            kubectl get deployment "${KUBERNETES_DEPLOYMENT}" \
+              --namespace "${KUBERNETES_NAMESPACE}" \
+              --output jsonpath='{.spec.replicas}'
+          )"
+
+          READY="$(
+            kubectl get deployment "${KUBERNETES_DEPLOYMENT}" \
+              --namespace "${KUBERNETES_NAMESPACE}" \
+              --output jsonpath='{.status.readyReplicas}'
+          )"
+
+          AVAILABLE="$(
+            kubectl get deployment "${KUBERNETES_DEPLOYMENT}" \
+              --namespace "${KUBERNETES_NAMESPACE}" \
+              --output jsonpath='{.status.availableReplicas}'
+          )"
+
+          READY="${READY:-0}"
+          AVAILABLE="${AVAILABLE:-0}"
+
+          echo "Desired replicas: ${DESIRED}"
+          echo "Ready replicas: ${READY}"
+          echo "Available replicas: ${AVAILABLE}"
+
+          if [ "${READY}" != "${DESIRED}" ]; then
+            echo "Not all replicas became Ready."
+            exit 1
+          fi
+
+          if [ "${AVAILABLE}" != "${DESIRED}" ]; then
+            echo "Not all replicas became Available."
+            exit 1
+          fi
+
+      - name: Capture state after Self-Healing
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          echo "Pods after Self-Healing:"
+
+          kubectl get pods \
+            --namespace "${KUBERNETES_NAMESPACE}" \
+            --selector "app=${KUBERNETES_DEPLOYMENT}" \
+            --output wide
+
+          AFTER_PODS="$(
+            kubectl get pods \
+              --namespace "${KUBERNETES_NAMESPACE}" \
+              --selector "app=${KUBERNETES_DEPLOYMENT}" \
+              --output jsonpath='{range .items[*]}{.metadata.name}{" | UID="}{.metadata.uid}{" | Created="}{.metadata.creationTimestamp}{"\n"}{end}'
+          )"
+
+          {
+            echo ""
+            echo "### Corrective action"
+            echo ""
+            echo '```text'
+            echo "kubectl rollout restart deployment/${KUBERNETES_DEPLOYMENT} -n ${KUBERNETES_NAMESPACE}"
+            echo '```'
+            echo ""
+            echo "### Pods after"
+            echo '```text'
+            echo "${AFTER_PODS}"
+            echo '```'
+            echo ""
+            echo "### Result"
+            echo ""
+            echo "✅ Deployment recovered automatically."
+          } >> "${GITHUB_STEP_SUMMARY}"
+
+      - name: Final operational status
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          kubectl get deployment "${KUBERNETES_DEPLOYMENT}" \
+            --namespace "${KUBERNETES_NAMESPACE}" \
+            --output custom-columns='NAME:.metadata.name,DESIRED:.spec.replicas,READY:.status.readyReplicas,AVAILABLE:.status.availableReplicas,UPDATED:.status.updatedReplicas'
+
+          echo ""
+          echo "Self-Healing completed successfully."
