@@ -1,11 +1,11 @@
 variable "aws_region" {
-  description = "Região AWS principal."
+  description = "RegiÃ£o AWS principal."
   type        = string
   default     = "us-east-1"
 }
 
 variable "environment" {
-  description = "Ambiente da aplicação."
+  description = "Ambiente da aplicaÃ§Ã£o."
   type        = string
   default     = "Production"
 }
@@ -35,7 +35,7 @@ variable "availability_zones" {
 }
 
 variable "public_subnet_cidrs" {
-  description = "CIDRs das subnets públicas."
+  description = "CIDRs das subnets pÃºblicas."
   type        = list(string)
   default     = ["10.40.1.0/24", "10.40.2.0/24"]
 }
@@ -47,13 +47,13 @@ variable "private_subnet_cidrs" {
 }
 
 variable "eks_cluster_version" {
-  description = "Versão Kubernetes do EKS."
+  description = "VersÃ£o Kubernetes do EKS."
   type        = string
   default     = "1.36"
 }
 
 variable "eks_node_instance_types" {
-  description = "Tipos de instância dos nodes EKS."
+  description = "Tipos de instÃ¢ncia dos nodes EKS."
   type        = list(string)
   default     = ["t3.small"]
 }
@@ -61,17 +61,17 @@ variable "eks_node_instance_types" {
 variable "eks_node_desired_size" {
   description = "Quantidade desejada de nodes EKS."
   type        = number
-  default     = 2
+  default     = 4
 }
 
 variable "eks_node_min_size" {
-  description = "Quantidade mínima de nodes EKS."
+  description = "Quantidade mÃ­nima de nodes EKS."
   type        = number
-  default     = 1
+  default     = 2
 }
 
 variable "eks_node_max_size" {
-  description = "Quantidade máxima de nodes EKS."
+  description = "Quantidade mÃ¡xima de nodes EKS."
   type        = number
-  default     = 2
+  default     = 4
 }

@@ -1,4 +1,4 @@
-﻿apiVersion: apps/v1
+apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: ngo-service
@@ -43,11 +43,11 @@ spec:
             timeoutSeconds: 3
           resources:
             requests:
-              cpu: "100m"
-              memory: "128Mi"
+              cpu: "50m"
+              memory: "96Mi"
             limits:
-              cpu: "300m"
-              memory: "256Mi"
+              cpu: "200m"
+              memory: "192Mi"
 ---
 apiVersion: v1
 kind: Service
@@ -144,11 +144,11 @@ spec:
             timeoutSeconds: 3
           resources:
             requests:
-              cpu: "150m"
-              memory: "128Mi"
+              cpu: "50m"
+              memory: "64Mi"
             limits:
-              cpu: "500m"
-              memory: "256Mi"
+              cpu: "300m"
+              memory: "192Mi"
 ---
 apiVersion: v1
 kind: Service
@@ -223,10 +223,10 @@ spec:
             timeoutSeconds: 3
           resources:
             requests:
-              cpu: "100m"
+              cpu: "50m"
               memory: "128Mi"
             limits:
-              cpu: "300m"
+              cpu: "200m"
               memory: "256Mi"
 ---
 apiVersion: v1
@@ -241,5 +241,3 @@ spec:
   ports:
     - port: 8083
       targetPort: 8083
-
-
