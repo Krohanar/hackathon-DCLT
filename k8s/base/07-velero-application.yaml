@@ -1,4 +1,4 @@
-﻿apiVersion: argoproj.io/v1alpha1
+apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
   name: solidarytech-velero
@@ -105,7 +105,7 @@ spec:
             schedule: "0 * * * *"
             useOwnerReferencesInBackup: false
             paused: false
-            skipImmediately: true
+            skipImmediately: false
             template:
               ttl: "168h0m0s"
               storageLocation: default
