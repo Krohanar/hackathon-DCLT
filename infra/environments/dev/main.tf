@@ -46,3 +46,18 @@ module "dynamodb_volunteers" {
   table_name = "SolidaryTechVolunteers"
   tags       = local.common_tags
 }
+
+module "rds_postgres" {
+  source = "../../modules/rds"
+
+  project_name        = var.project_name
+  environment         = var.environment
+  vpc_id              = module.network.vpc_id
+  private_subnet_ids  = module.network.private_subnet_ids
+  allowed_cidr_blocks = [var.vpc_cidr]
+
+  db_name         = "ngo_db"
+  master_username = "solidaryadmin"
+
+  tags = local.common_tags
+}

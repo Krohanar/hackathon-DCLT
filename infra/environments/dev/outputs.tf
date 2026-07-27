@@ -37,3 +37,39 @@ output "volunteers_table_arn" {
   description = "ARN da tabela DynamoDB de voluntários."
   value       = module.dynamodb_volunteers.table_arn
 }
+
+output "rds_instance_id" {
+  description = "ID da instância RDS."
+  value       = module.rds_postgres.db_instance_id
+}
+
+output "rds_endpoint" {
+  description = "Endpoint do RDS PostgreSQL."
+  value       = module.rds_postgres.db_endpoint
+}
+
+output "rds_port" {
+  description = "Porta do RDS PostgreSQL."
+  value       = module.rds_postgres.db_port
+}
+
+output "rds_initial_database" {
+  description = "Banco inicial criado no RDS."
+  value       = module.rds_postgres.db_name
+}
+
+output "rds_username" {
+  description = "Usuário administrador do RDS."
+  value       = module.rds_postgres.db_username
+}
+
+output "rds_password" {
+  description = "Senha administradora do RDS."
+  value       = module.rds_postgres.db_password
+  sensitive   = true
+}
+
+output "rds_security_group_id" {
+  description = "Security Group do RDS."
+  value       = module.rds_postgres.security_group_id
+}
