@@ -135,10 +135,10 @@ spec:
       port: 13133
       targetPort: health
 
-    - name: internal-metrics
+    - name: metrics
       protocol: TCP
       port: 8888
-      targetPort: internal-metrics
+      targetPort: metrics
 
 ---
 apiVersion: apps/v1
@@ -196,7 +196,7 @@ spec:
               containerPort: 13133
               protocol: TCP
 
-            - name: internal-metrics
+            - name: metrics
               containerPort: 8888
               protocol: TCP
 
@@ -243,3 +243,4 @@ spec:
         - name: collector-config
           configMap:
             name: solidarytech-otel-collector-config
+
