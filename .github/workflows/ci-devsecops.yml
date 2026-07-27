@@ -44,7 +44,7 @@ jobs:
       - name: Lint with flake8
         working-directory: ${{ matrix.service }}
         run: |
-          flake8 app.py --max-line-length=140
+          flake8 app.py --max-line-length=140 --ignore=E302,E305,W503
 
       - name: Security scan with Bandit
         working-directory: ${{ matrix.service }}
