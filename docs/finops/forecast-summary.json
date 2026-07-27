@@ -1,0 +1,9 @@
+﻿{
+    "GeneratedAt":  "2026-07-27 09:29:58",
+    "MonthlyUsd":  171.27,
+    "AnnualUsd":  2055.24,
+    "Ec2Hourly":  0.0208,
+    "EbsGbMonth":  0.08,
+    "RdsHourly":  0.018,
+    "RdsGbMonth":  0.115
+}
