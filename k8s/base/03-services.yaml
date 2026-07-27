@@ -81,7 +81,7 @@ spec:
     spec:
       containers:
         - name: donation-service
-          image: 106978078844.dkr.ecr.us-east-1.amazonaws.com/solidarytech/donation-service:sre-metrics
+          image: 106978078844.dkr.ecr.us-east-1.amazonaws.com/solidarytech/donation-service:73219ea
           imagePullPolicy: Always
           ports:
             - containerPort: 8082
@@ -116,6 +116,18 @@ spec:
                 configMapKeyRef:
                   name: solidarytech-config
                   key: SQS_QUEUE_URL
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: "http://solidarytech-otel-collector.monitoring.svc.cluster.local:4318"
+            - name: OTEL_EXPORTER_OTLP_PROTOCOL
+              value: "http/protobuf"
+            - name: OTEL_SERVICE_NAME
+              value: "donation-service"
+            - name: OTEL_DEPLOYMENT_ENVIRONMENT
+              value: "production"
+            - name: SERVICE_VERSION
+              value: "73219ea"
+            - name: OTEL_EXPORTER_OTLP_TIMEOUT
+              value: "10000"
           readinessProbe:
             httpGet:
               path: /health
@@ -229,4 +241,5 @@ spec:
   ports:
     - port: 8083
       targetPort: 8083
+
 

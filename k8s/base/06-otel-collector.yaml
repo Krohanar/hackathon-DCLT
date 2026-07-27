@@ -54,7 +54,7 @@ data:
             action: upsert
 
     exporters:
-      otlphttp/newrelic:
+      otlp_http/newrelic:
         endpoint: https://otlp.nr-data.net
         headers:
           api-key: ${env:NEW_RELIC_LICENSE_KEY}
@@ -83,7 +83,7 @@ data:
             - resource
             - batch
           exporters:
-            - otlphttp/newrelic
+            - otlp_http/newrelic
 
         metrics:
           receivers:
@@ -93,7 +93,7 @@ data:
             - resource
             - batch
           exporters:
-            - otlphttp/newrelic
+            - otlp_http/newrelic
 
         logs:
           receivers:
@@ -103,7 +103,7 @@ data:
             - resource
             - batch
           exporters:
-            - otlphttp/newrelic
+            - otlp_http/newrelic
 
 ---
 apiVersion: v1
@@ -243,4 +243,5 @@ spec:
         - name: collector-config
           configMap:
             name: solidarytech-otel-collector-config
+
 
