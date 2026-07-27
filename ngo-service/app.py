@@ -1,4 +1,4 @@
-import os
+﻿import os
 import sys
 import psycopg2
 from psycopg2.extras import RealDictCursor
@@ -16,12 +16,12 @@ app = Flask(__name__)
 
 DATABASE_URL = os.getenv("DATABASE_URL")
 if not DATABASE_URL:
-    log.critical("Erro: DATABASE_URL não definida.")
+    log.critical("Erro: DATABASE_URL nÃ£o definida.")
     sys.exit(1)
 
 try:
     pool = SimpleConnectionPool(1, 10, dsn=DATABASE_URL)
-    log.info("Pool de conexões com o PostgreSQL (ngo-service) inicializado.")
+    log.info("Pool de conexÃµes com o PostgreSQL (ngo-service) inicializado.")
 except Exception as e:
     log.critical(f"Erro ao conectar ao PostgreSQL: {e}")
     sys.exit(1)
@@ -34,8 +34,8 @@ def health():
 def create_ngo():
     data = request.get_json()
     if not data or not all(k in data for k in ('name', 'email', 'cause', 'city')):
-        return jsonify({"error": "Campos obrigatórios ausentes"}), 400
-    
+        return jsonify({"error": "Campos obrigatÃ³rios ausentes"}), 400
+
     conn = pool.getconn()
     try:
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
@@ -48,7 +48,7 @@ def create_ngo():
             return jsonify(new_ngo), 201
     except psycopg2.IntegrityError:
         conn.rollback()
-        return jsonify({"error": "E-mail já cadastrado"}), 409
+        return jsonify({"error": "E-mail jÃ¡ cadastrado"}), 409
     except Exception as e:
         conn.rollback()
         log.error(f"Erro ao criar ONG: {e}")

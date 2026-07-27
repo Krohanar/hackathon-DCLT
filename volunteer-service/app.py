@@ -1,4 +1,4 @@
-import os
+﻿import os
 import sys
 import uuid
 import time
@@ -21,7 +21,7 @@ AWS_ENDPOINT_URL = os.getenv("AWS_ENDPOINT_URL")
 DYNAMODB_TABLE = os.getenv("AWS_DYNAMODB_TABLE")
 
 if not DYNAMODB_TABLE:
-    log.critical("Erro: AWS_DYNAMODB_TABLE não definida.")
+    log.critical("Erro: AWS_DYNAMODB_TABLE nÃ£o definida.")
     sys.exit(1)
 
 try:
@@ -34,7 +34,7 @@ try:
 
     dynamodb = boto3.resource("dynamodb", **dynamodb_kwargs)
     table = dynamodb.Table(DYNAMODB_TABLE)
-    log.info(f"Conectado à tabela DynamoDB: {DYNAMODB_TABLE}")
+    log.info(f"Conectado Ã  tabela DynamoDB: {DYNAMODB_TABLE}")
 except Exception as e:
     log.critical(f"Falha ao conectar no DynamoDB: {e}")
     sys.exit(1)
@@ -50,7 +50,7 @@ def register_volunteer():
     data = request.get_json()
 
     if not data or not all(k in data for k in ("name", "email", "ngo_id")):
-        return jsonify({"error": "Campos obrigatórios ausentes"}), 400
+        return jsonify({"error": "Campos obrigatÃ³rios ausentes"}), 400
 
     volunteer_id = str(uuid.uuid4())
 
@@ -66,7 +66,7 @@ def register_volunteer():
         table.put_item(Item=item)
         return jsonify(item), 201
     except Exception as e:
-        log.error(f"Erro ao salvar voluntário no DynamoDB: {e}")
+        log.error(f"Erro ao salvar voluntÃ¡rio no DynamoDB: {e}")
         return jsonify({"error": "Erro interno ao processar dados"}), 500
 
 
