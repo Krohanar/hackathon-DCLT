@@ -81,7 +81,7 @@ spec:
     spec:
       containers:
         - name: donation-service
-          image: 106978078844.dkr.ecr.us-east-1.amazonaws.com/solidarytech/donation-service:latest
+          image: 106978078844.dkr.ecr.us-east-1.amazonaws.com/solidarytech/donation-service:sre-metrics
           imagePullPolicy: Always
           ports:
             - containerPort: 8082
@@ -229,3 +229,4 @@ spec:
   ports:
     - port: 8083
       targetPort: 8083
+
