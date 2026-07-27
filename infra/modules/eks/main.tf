@@ -13,6 +13,16 @@ variable "public_subnet_ids" {
   type        = list(string)
 }
 
+variable "donations_queue_arn" {
+  description = "ARN da fila SQS de doações."
+  type        = string
+}
+
+variable "volunteers_table_arn" {
+  description = "ARN da tabela DynamoDB de voluntários."
+  type        = string
+}
+
 variable "node_instance_types" {
   description = "Tipos de instância dos worker nodes."
   type        = list(string)
@@ -104,6 +114,43 @@ resource "aws_iam_role_policy_attachment" "node_ecr_policy" {
   policy_arn = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"
 }
 
+resource "aws_iam_role_policy" "node_app_runtime_policy" {
+  name = "${var.cluster_name}-node-app-runtime-policy"
+  role = aws_iam_role.node.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid    = "AllowDonationQueueAccess"
+        Effect = "Allow"
+        Action = [
+          "sqs:GetQueueUrl",
+          "sqs:GetQueueAttributes",
+          "sqs:SendMessage",
+          "sqs:ReceiveMessage",
+          "sqs:DeleteMessage"
+        ]
+        Resource = var.donations_queue_arn
+      },
+      {
+        Sid    = "AllowVolunteerTableAccess"
+        Effect = "Allow"
+        Action = [
+          "dynamodb:DescribeTable",
+          "dynamodb:GetItem",
+          "dynamodb:PutItem",
+          "dynamodb:UpdateItem",
+          "dynamodb:DeleteItem",
+          "dynamodb:Scan",
+          "dynamodb:Query"
+        ]
+        Resource = var.volunteers_table_arn
+      }
+    ]
+  })
+}
+
 resource "aws_eks_cluster" "this" {
   name     = var.cluster_name
   role_arn = aws_iam_role.cluster.arn
@@ -156,7 +203,8 @@ resource "aws_eks_node_group" "default" {
   depends_on = [
     aws_iam_role_policy_attachment.node_worker_policy,
     aws_iam_role_policy_attachment.node_cni_policy,
-    aws_iam_role_policy_attachment.node_ecr_policy
+    aws_iam_role_policy_attachment.node_ecr_policy,
+    aws_iam_role_policy.node_app_runtime_policy
   ]
 }
 
